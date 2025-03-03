@@ -1,0 +1,43 @@
+
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.regression.LinearRegressionModel
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+import org.apache.spark.mllib.linalg.Vectors
+
+val start = System.currentTimeMillis
+
+// Load and parse the data
+val data = sc.textFile("fried_delve.data")
+val parsedData = data.map { line =>
+  val parts = line.split(',')
+  LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(' ').map(_.toDouble)))
+}.cache()
+
+
+
+// Building the model
+val numIterations = 1000
+val step = 0.0000001
+val algorithm = new LinearRegressionWithSGD()
+algorithm.setIntercept(true)
+algorithm.optimizer.setNumIterations(numIterations)
+algorithm.optimizer.setStepSize(step)
+val runandpredicttime = System.currentTimeMillis
+val model = algorithm.run(parsedData)
+
+
+
+// Evaluate model on training examples and compute training error
+val valuesAndPreds = parsedData.map { point =>
+  val prediction = model.predict(point.features)
+  (point.label, prediction)
+}
+val runandpredicttotaltime = System.currentTimeMillis - runandpredicttime
+
+val MSE = valuesAndPreds.map{case(v, p) => math.pow((v - p), 2)}.mean()
+println("training Mean Squared Error = " + MSE)
+
+
+val totalTime = System.currentTimeMillis - start
+println("Elapsed time: %1d ms".format(totalTime))
+println("Run And Predict time: %1d ms".format(runandpredicttotaltime))

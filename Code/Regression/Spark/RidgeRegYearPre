@@ -1,0 +1,40 @@
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.regression.LinearRegressionModel
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+import org.apache.spark.mllib.linalg.Vectors
+
+val start = System.currentTimeMillis
+
+// Load and parse the train
+val data = sc.textFile("YearPretrain")
+val parsedData = data.map { line =>
+  val parts = line.split(',')
+  LabeledPoint(parts(0).toDouble, Vectors.dense(parts.slice(1,parts.length).map(_.toDouble)))
+}.cache()
+
+
+// Load and parse the test
+val data2 = sc.textFile("YearPreTest")
+val parsedData2 = data2.map { line =>
+  val parts = line.split(',')
+  LabeledPoint(parts(0).toDouble, Vectors.dense(parts.slice(1,parts.length).map(_.toDouble)))
+}.cache()
+
+
+// Building the model
+val numIterations = 100
+val stepSide=0.001
+val elasticNetParam=0.0
+val model = LinearRegressionWithSGD.train(parsedData, numIterations,stepSide,elasticNetParam)
+
+// Evaluate model on training examples and compute training error
+val valuesAndPreds = parsedData2.map { point =>
+  val prediction = model.predict(point.features)
+  (point.label, prediction)
+}
+val MSE = valuesAndPreds.map{case(v, p) => math.pow((v - p), 2)}.mean()
+println("training Mean Squared Error = " + MSE)
+
+
+val totalTime = System.currentTimeMillis - start
+println("Elapsed time: %1d ms".format(totalTime))
